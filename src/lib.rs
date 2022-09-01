@@ -173,6 +173,9 @@ pub mod select;
 #[cfg(feature = "appkit")]
 pub mod text;
 
+#[cfg(feature = "appkit")]
+pub mod textview;
+
 #[cfg(feature = "quicklook")]
 #[cfg_attr(docsrs, doc(cfg(feature = "quicklook")))]
 pub mod quicklook;
