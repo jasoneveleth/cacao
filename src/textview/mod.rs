@@ -40,6 +40,8 @@
 //!
 //! For more information on Autolayout, view the module or check out the examples folder.
 
+use core_graphics::geometry::CGRect;
+use crate::geometry::Rect;
 use objc::runtime::{Class, Object};
 use objc::{msg_send, sel, sel_impl};
 
@@ -140,13 +142,13 @@ impl TextView {
     ///
     /// This handles grabbing autolayout anchor pointers, as well as things related to layering and
     /// so on. It returns a generic `TextView<T>`, which the caller can then customize as needed.
-    pub(crate) fn init<T>(view: id) -> TextView<T> {
+    pub(crate) fn init<T>(textview: id) -> TextView<T> {
         unsafe {
             #[cfg(feature = "autolayout")]
-            let _: () = msg_send![view, setTranslatesAutoresizingMaskIntoConstraints: NO];
+            let _: () = msg_send![textview, setTranslatesAutoresizingMaskIntoConstraints: NO];
 
             #[cfg(feature = "appkit")]
-            let _: () = msg_send![view, setWantsLayer: YES];
+            let _: () = msg_send![textview, setWantsLayer: YES];
         }
 
         TextView {
@@ -154,47 +156,51 @@ impl TextView {
             delegate: None,
 
             #[cfg(feature = "autolayout")]
-            safe_layout_guide: SafeAreaLayoutGuide::new(view),
+            safe_layout_guide: SafeAreaLayoutGuide::new(textview),
 
             #[cfg(feature = "autolayout")]
-            top: LayoutAnchorY::top(view),
+            top: LayoutAnchorY::top(textview),
 
             #[cfg(feature = "autolayout")]
-            left: LayoutAnchorX::left(view),
+            left: LayoutAnchorX::left(textview),
 
             #[cfg(feature = "autolayout")]
-            leading: LayoutAnchorX::leading(view),
+            leading: LayoutAnchorX::leading(textview),
 
             #[cfg(feature = "autolayout")]
-            right: LayoutAnchorX::right(view),
+            right: LayoutAnchorX::right(textview),
 
             #[cfg(feature = "autolayout")]
-            trailing: LayoutAnchorX::trailing(view),
+            trailing: LayoutAnchorX::trailing(textview),
 
             #[cfg(feature = "autolayout")]
-            bottom: LayoutAnchorY::bottom(view),
+            bottom: LayoutAnchorY::bottom(textview),
 
             #[cfg(feature = "autolayout")]
-            width: LayoutAnchorDimension::width(view),
+            width: LayoutAnchorDimension::width(textview),
 
             #[cfg(feature = "autolayout")]
-            height: LayoutAnchorDimension::height(view),
+            height: LayoutAnchorDimension::height(textview),
 
             #[cfg(feature = "autolayout")]
-            center_x: LayoutAnchorX::center(view),
+            center_x: LayoutAnchorX::center(textview),
 
             #[cfg(feature = "autolayout")]
-            center_y: LayoutAnchorY::center(view),
+            center_y: LayoutAnchorY::center(textview),
 
-            layer: Layer::wrap(unsafe { msg_send![view, layer] }),
+            layer: Layer::wrap(unsafe { msg_send![textview, layer] }),
 
-            objc: ObjcProperty::retain(view)
+            objc: ObjcProperty::retain(textview)
         }
     }
 
-    /// Returns a default `View`, suitable for customizing and displaying.
+    /// Returns a default `TextView`, suitable for customizing and displaying.
     pub fn new() -> Self {
-        TextView::init(unsafe { msg_send![native_interface::register_view_class(), new] })
+        TextView::init(unsafe { 
+            let zero: CGRect = Rect::zero().into();
+            let alloc: id = msg_send![native_interface::register_textview_class(), alloc];
+            msg_send![alloc, initWithFrame:zero]
+        })
     }
 }
 
@@ -202,31 +208,34 @@ impl<T> TextView<T>
 where
     T: TextViewDelegate + 'static
 {
-    /// Initializes a new View with a given `ViewDelegate`. This enables you to respond to events
-    /// and customize the view as a module, similar to class-based systems.
+    /// Initializes a new TextView with a given `TextViewDelegate`. This enables you to respond to events
+    /// and customize the textview as a module, similar to class-based systems.
     pub fn with(delegate: T) -> TextView<T> {
-        let class = native_interface::register_view_class_with_delegate(&delegate);
+        let class = native_interface::register_textview_class_with_delegate(&delegate);
         let mut delegate = Box::new(delegate);
 
-        let view = unsafe {
-            let view: id = msg_send![class, new];
+        let textview = unsafe {
+            let zero: CGRect = Rect::zero().into();
+            let alloc: id = msg_send![class, alloc];
+            let textview: id = msg_send![alloc, initWithFrame:zero];
+
             let ptr = Box::into_raw(delegate);
-            (&mut *view).set_ivar(TEXTVIEW_DELEGATE_PTR, ptr as usize);
+            (&mut *textview).set_ivar(TEXTVIEW_DELEGATE_PTR, ptr as usize);
             delegate = Box::from_raw(ptr);
-            view
+            textview
         };
 
-        let mut view = TextView::init(view);
-        (&mut delegate).did_load(view.clone_as_handle());
-        view.delegate = Some(delegate);
-        view
+        let mut textview = TextView::init(textview);
+        (&mut delegate).did_load(textview.clone_as_handle());
+        textview.delegate = Some(delegate);
+        textview
     }
 }
 
 impl<T> TextView<T> {
     /// Returns a clone of this object, sans references to the delegate or
     /// callback pointer. We use this in calling `did_load()` - implementing delegates get a way to
-    /// reference, customize and use the view but without the trickery of holding pieces of the
+    /// reference, customize and use the textview but without the trickery of holding pieces of the
     /// delegate - the `TextView` is the only true holder of those.
     pub fn clone_as_handle(&self) -> TextView {
         TextView {
@@ -277,11 +286,6 @@ impl<T> TextView<T> {
         #[cfg(feature = "appkit")]
         self.objc.with_mut(|obj| unsafe {
             (&mut *obj).set_ivar(BACKGROUND_COLOR, color);
-        });
-
-        #[cfg(feature = "uikit")]
-        self.objc.with_mut(|obj| unsafe {
-            let _: () = msg_send![&*obj, setBackgroundColor: color];
         });
     }
 }

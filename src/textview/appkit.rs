@@ -32,20 +32,20 @@ extern "C" fn text_did_change<T: TextViewDelegate>(this: &mut Object, _: Sel, _i
 }
 
 extern "C" fn text_should_begin_editing<T: TextViewDelegate>(this: &mut Object, _: Sel, _info: id) -> BOOL {
-    let view = load::<T>(this, TEXTVIEW_DELEGATE_PTR);
+    let textview = load::<T>(this, TEXTVIEW_DELEGATE_PTR);
     let s = NSString::retain(unsafe { msg_send![this, stringValue] });
 
-    match view.text_should_begin_editing(s.to_str()) {
+    match textview.text_should_begin_editing(s.to_str()) {
         true => YES,
         false => NO
     }
 }
 
 
-/// Injects an `NSTextView` subclass. This is used for the default views that don't use delegates - we
+/// Injects an `NSTextView` subclass. This is used for the default textviews that don't use delegates - we
 /// have separate classes here since we don't want to waste cycles on methods that will never be
 /// used if there's no delegates.
-pub(crate) fn register_view_class() -> *const Class {
+pub(crate) fn register_textview_class() -> *const Class {
     static mut TEXTVIEW_CLASS: *const Class = 0 as *const Class;
     static INIT: Once = Once::new();
 
@@ -63,9 +63,9 @@ pub(crate) fn register_view_class() -> *const Class {
 
 /// Injects an `NSTextView` subclass, with some callback and pointer ivars for what we
 /// need to do.
-pub(crate) fn register_view_class_with_delegate<T: TextViewDelegate>(instance: &T) -> *const Class {
+pub(crate) fn register_textview_class_with_delegate<T: TextViewDelegate>(instance: &T) -> *const Class {
     load_or_register_class("NSTextView", instance.subclass_name(), |decl| unsafe {
-        // A pointer to the ViewDelegate instance on the Rust side.
+        // A pointer to the TextViewDelegate instance on the Rust side.
         // It's expected that this doesn't move.
         decl.add_ivar::<usize>(TEXTVIEW_DELEGATE_PTR);
         decl.add_ivar::<id>(BACKGROUND_COLOR);

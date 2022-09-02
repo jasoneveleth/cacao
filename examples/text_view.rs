@@ -1,5 +1,6 @@
 //! This example showcases the TextView
 
+use cacao::color::{Color, Theme};
 use cacao::textview::{TextView, TextViewDelegate};
 use cacao::layout::{Layout, LayoutConstraint};
 use cacao::view::View;
@@ -68,14 +69,14 @@ impl TextViewDelegate for ConsoleLogger {
 #[derive(Debug)]
 struct AppWindow {
     input: TextView<ConsoleLogger>,
-    content: View
+    content: View,
 }
 
 impl AppWindow {
     pub fn new() -> Self {
         AppWindow {
             input: TextView::with(ConsoleLogger),
-            content: View::new()
+            content: View::new(),
         }
     }
 }
@@ -87,14 +88,16 @@ impl WindowDelegate for AppWindow {
         window.set_title("TextView Example");
         window.set_minimum_content_size(480., 270.);
 
+        self.input.set_background_color(Color::SystemRed);
         self.content.add_subview(&self.input);
+
         window.set_content_view(&self.content);
 
         LayoutConstraint::activate(&[
-            self.content.leading.constraint_equal_to(&self.content.leading),
-            self.content.trailing.constraint_equal_to(&self.content.trailing),
-            self.content.top.constraint_equal_to(&self.content.top),
-            self.content.bottom.constraint_equal_to(&self.content.bottom),
+            self.input.leading.constraint_equal_to(&self.content.leading),
+            self.input.trailing.constraint_equal_to(&self.content.trailing),
+            self.input.top.constraint_equal_to(&self.content.top),
+            self.input.bottom.constraint_equal_to(&self.content.bottom),
         ]);
     }
 }
